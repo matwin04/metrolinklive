@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Vehicles</title>
+    <meta charset="utf-8" />
+    <link href="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.css" rel="stylesheet" />
+    <style>
+        #map { height: 400px; width: 100%; margin-bottom: 20px; }
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ccc; padding: 4px; text-align: left; }
+    </style>
+</head>
+<body>
+{% include 'navbar.html' %}
+<h1>Vehicle Positions</h1>
+<div id="map"></div>
+
+<table>
+    <thead>
+        <tr>
+            <th>Vehicle ID</th>
+            <th>Trip ID</th>
+            <th>Route ID</th>
+            <th>Stop Sequence</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for entity in feed.entity %}
+            {% if entity.vehicle %}
+                {% set v = entity.vehicle %}
+                <tr>
+                    <td>{{ v.vehicle.id }}</td>
+                    <td>{{ v.trip.tripId }}</td>
+                    <td>{{ v.trip.routeId }}</td>
+                    <td>{{ v.currentStopSequence }}</td>
+                </tr>
+            {% endif %}
+        {% endfor %}
+    </tbody>
+</table>
+
+<script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
+<script>
+    const map = new maplibregl.Map({
+        container: "map",
+        style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
+        center: [-118.25, 34.05],
+        zoom: 9,
+    });
+
+    map.on('load', () => {
+        const geojson = {{ geojson | tojson }};
+        map.addSource('vehicles', { type: 'geojson', data: geojson });
+
+        map.addLayer({
+            id: 'vehicles',
+            type: 'circle',
+            source: 'vehicles',
+            paint: {
+                'circle-radius': 6,
+                'circle-color': '#FF0000'
+            }
+        });
+    });
+</script>
+
+</body>
+</html>

@@ -4,4 +4,6 @@ version = "0.1.0"
 requires-python = ">=3.9"
 dependencies = [
   "flask>=3.1",
+  "gtfs-realtime-bindings>=1.0.0",
+  "requests>=2.32.5",
 ]

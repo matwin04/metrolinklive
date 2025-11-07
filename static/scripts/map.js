@@ -8,7 +8,7 @@ const map = new maplibregl.Map({
 // Define colors per route
 const routeColors = {
     "Orange County Line": "#DE620D",
-    "San Bernardino Line": "#0000FF",
+    "San Bernardino Line": "#9900ffff",
     "Ventura County Line": "#00FF00",
     "Riverside Line": "#FFA500",
     "91 Line": "#165D9B"
@@ -24,11 +24,14 @@ map.on('load', () => {
         type: "geojson",
         data: "/static/maps/CA_Stations.geojson"
     });
-     map.addSource("routes", {
-            type: "geojson",
-            data: "/static/maps/ML_Routes.geojson"
-     });
-
+    map.addSource("routes", {
+        type: "geojson",
+        data: "/static/maps/ML_Routes.geojson"
+    });
+    map.addSource("surfliner",{
+        type: "geojson",
+        data: "/static/maps/Surfliner.geojson"
+    });
 
 
     map.addLayer({
@@ -42,11 +45,30 @@ map.on('load', () => {
             'circle-stroke-color': '#fff'
         }
     });
+        // --- ROUTE LAYER ---
+        map.addLayer({
+            id: "routes-layer",
+            type: "line",
+            source: "routes",
+            paint: {
+                "line-color": "#005BBB",
+                "line-width": 3
+            }
+        });
+        map.addLayer({
+            id: "routes-surfliner-layer",
+            type: "line",
+            source: "surfliner",
+            paint: {
+                "line-color": "#5187c1ff",
+                "line-width": 3
+            }
 
+        })
 
         // --- STATION LAYER ---
         map.addLayer({
-            id: "stations-layer",
+            id: "stations-dots",
             type: "circle",
             source: "stations",
             paint: {
@@ -68,7 +90,6 @@ map.on('load', () => {
             `)
             .addTo(map);
     });
-
     map.on('mouseenter', 'vehicle-dots', () => map.getCanvas().style.cursor = 'pointer');
     map.on('mouseleave', 'vehicle-dots', () => map.getCanvas().style.cursor = '');
 

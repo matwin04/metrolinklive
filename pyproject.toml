@@ -3,7 +3,12 @@ name = "vercel-flask-starter"
 version = "0.1.0"
 requires-python = ">=3.9"
 dependencies = [
+  "dash>=3.2.0",
   "flask>=3.1",
   "gtfs-realtime-bindings>=1.0.0",
+  "pandas>=2.3.3",
+  "plotly>=6.4.0",
+  "pyttsx3>=2.99",
   "requests>=2.32.5",
+  "rich>=14.2.0",
 ]

@@ -1,69 +1,117 @@
-from flask import Flask, render_template
+from flask import Flask, render_template, jsonify
 import requests
 from google.transit import gtfs_realtime_pb2
-from google.protobuf.json_format import MessageToDict
 
 app = Flask(__name__)
 
 API_KEY = "gMpUXrGPJJ8X9Pp2OivQC1czi046utCMabRM3XQg"
+VEHICLE_URL = "https://metrolink-gtfsrt.gbsdigital.us/feed/gtfsrt-vehicles"
+TRIP_URL = "https://metrolink-gtfsrt.gbsdigital.us/feed/gtfsrt-trips"
 
 def fetch_gtfs_rt(url):
     headers = {"X-Api-Key": API_KEY}
-    response = requests.get(url, headers=headers, timeout=10)
-    response.raise_for_status()
-
+    r = requests.get(url, headers=headers, timeout=10)
+    r.raise_for_status()
     feed = gtfs_realtime_pb2.FeedMessage()
-    feed.ParseFromString(response.content)
-    return MessageToDict(feed)
+    feed.ParseFromString(r.content)
+    return feed
 
-def trips_to_geojson(feed):
-    """Convert trips to GeoJSON features if vehicle locations are available"""
-    features = []
-    for entity in feed.get("entity", []):
-        trip_update = entity.get("tripUpdate")
-        if trip_update:
-            for stop in trip_update.get("stopTimeUpdate", []):
-                stop_id = stop.get("stopId")
-                # GTFS-RT trips may not include coordinates, so this is optional
-                # You can link stop_id to a stop database with lat/lon if needed
-    return {"type": "FeatureCollection", "features": features}
-
-def vehicles_to_geojson(feed):
-    """Convert vehicles to GeoJSON features"""
-    features = []
-    for entity in feed.get("entity", []):
-        vehicle = entity.get("vehicle")
-        if vehicle:
-            pos = vehicle.get("position")
-            if pos:
-                features.append({
-                    "type": "Feature",
-                    "geometry": {
-                        "type": "Point",
-                        "coordinates": [pos["longitude"], pos["latitude"]]
-                    },
-                    "properties": {
-                        "id": vehicle.get("vehicle", {}).get("id"),
-                        "trip_id": vehicle.get("trip", {}).get("tripId"),
-                        "route_id": vehicle.get("trip", {}).get("routeId"),
-                        "current_stop_sequence": vehicle.get("currentStopSequence")
-                    }
-                })
-    return {"type": "FeatureCollection", "features": features}
+# --- Vehicles ---
 @app.route("/")
 def index():
     return render_template("index.html")
-@app.route("/gtfsrt/trips")
-def gtfsrt_trips():
-    feed = fetch_gtfs_rt("https://metrolink-gtfsrt.gbsdigital.us/feed/gtfsrt-trips")
-    geojson = trips_to_geojson(feed)
-    return render_template("gtfsrt_trips.html", feed=feed, geojson=geojson)
+@app.route("/vehicles")
+def vehicles_page():
+    feed = fetch_gtfs_rt(VEHICLE_URL)
+    vehicles = []
+    for entity in feed.entity:
+        if entity.HasField("vehicle"):
+            v = entity.vehicle
+            pos = v.position
+            trip = v.trip
+            if pos.latitude is not None and pos.longitude is not None:
+                vehicles.append({
+                    "id": getattr(v.vehicle, "id", "Unknown"),
+                    "trip_id": getattr(trip, "trip_id", "Unknown"),
+                    "route_id": getattr(trip, "route_id", "Unknown"),
+                    "stop_seq": getattr(v, "current_stop_sequence", 0),
+                    "lat": pos.latitude,
+                    "lon": pos.longitude,
+                    "speed": getattr(pos, "speed", 0),
+                })
+    return render_template("vehicles.html", vehicles=vehicles)
 
-@app.route("/gtfsrt/vehicles")
-def gtfsrt_vehicles():
-    feed = fetch_gtfs_rt("https://metrolink-gtfsrt.gbsdigital.us/feed/gtfsrt-vehicles")
-    geojson = vehicles_to_geojson(feed)
-    return render_template("vehicles.html", feed=feed, geojson=geojson)
+@app.route("/vehicles-data")
+def vehicles_data():
+    feed = fetch_gtfs_rt(VEHICLE_URL)
+    vehicles = []
+    for entity in feed.entity:
+        if entity.HasField("vehicle"):
+            v = entity.vehicle
+            pos = v.position
+            trip = v.trip
+            if pos.latitude is not None and pos.longitude is not None:
+                vehicles.append({
+                    "id": getattr(v.vehicle, "id", "Unknown"),
+                    "trip_id": getattr(trip, "trip_id", "Unknown"),
+                    "route_id": getattr(trip, "route_id", "Unknown"),
+                    "stop_seq": getattr(v, "current_stop_sequence", 0),
+                    "lat": pos.latitude,
+                    "lon": pos.longitude,
+                    "speed": getattr(pos, "speed", 0),
+                })
+    return jsonify(vehicles)
+
+
+# --- Trips ---
+@app.route("/trips")
+def trips_page():
+    feed = fetch_gtfs_rt(TRIP_URL)
+    trips = []
+    for entity in feed.entity:
+        if entity.HasField("trip_update"):
+            tu = entity.trip_update
+            trips.append({
+                "trip_id": tu.trip.trip_id,
+                "route_id": tu.trip.route_id,
+                "start_time": tu.trip.start_time,
+                "start_date": tu.trip.start_date,
+                "schedule_relationship": tu.trip.schedule_relationship
+            })
+    # render static table via template
+    return render_template("trips.html", trips=trips)
+
+@app.route("/trips/<trip_id>")
+def get_trip(trip_id):
+    feed = fetch_gtfs_rt(TRIP_URL)
+    for entity in feed.entity:
+        if entity.HasField("trip_update"):
+            tu = entity.trip_update
+            if tu.trip.trip_id == trip_id:
+                result = {
+                    "trip_id": tu.trip.trip_id,
+                    "route_id": tu.trip.route_id,
+                    "start_time": tu.trip.start_time,
+                    "start_date": tu.trip.start_date,
+                    "schedule_relationship": tu.trip.schedule_relationship,
+                    "stop_time_updates": [
+                        {
+                            "stop_id": s.stop_id,
+                            "arrival": {
+                                "time": s.arrival.time if s.HasField("arrival") and s.arrival.HasField("time") else None,
+                                "delay": s.arrival.delay if s.HasField("arrival") and s.arrival.HasField("delay") else None
+                            } if s.HasField("arrival") else None,
+                            "departure": {
+                                "time": s.departure.time if s.HasField("departure") and s.departure.HasField("time") else None,
+                                "delay": s.departure.delay if s.HasField("departure") and s.departure.HasField("delay") else None
+                            } if s.HasField("departure") else None,
+                            "stop_sequence": s.stop_sequence
+                        }
+                        for s in tu.stop_time_update
+                    ]
+                }
+                return jsonify(result)
+    return jsonify({"error": "Trip not found"}), 404
 
 if __name__ == "__main__":
     app.run(debug=True)

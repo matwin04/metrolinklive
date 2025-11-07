@@ -1,0 +1,38 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Trips</title>
+    <meta charset="utf-8" />
+    <style>
+        table { width: 100%; border-collapse: collapse; margin-top: 10px; }
+        th, td { border: 1px solid #ccc; padding: 4px; text-align: left; }
+    </style>
+</head>
+<body>
+{% include 'navbar.html' %}
+<h1>Trip Updates</h1>
+
+<table>
+    <thead>
+        <tr>
+            <th>Trip ID</th>
+            <th>Route ID</th>
+            <th>Start Time</th>
+            <th>Start Date</th>
+            <th>Schedule Relationship</th>
+        </tr>
+    </thead>
+    <tbody>
+        {% for t in trips %}
+        <tr>
+            <td><a href="/trips/{{ t.trip_id }}">{{ t.trip_id }}</a></td>
+            <td>{{ t.route_id }}</td>
+            <td>{{ t.start_time }}</td>
+            <td>{{ t.start_date }}</td>
+            <td>{{ t.schedule_relationship }}</td>
+        </tr>
+        {% endfor %}
+    </tbody>
+</table>
+</body>
+</html>

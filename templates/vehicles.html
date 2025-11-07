@@ -22,47 +22,24 @@
             <th>Trip ID</th>
             <th>Route ID</th>
             <th>Stop Sequence</th>
+            <th>Speed</th>
         </tr>
     </thead>
     <tbody>
-        {% for entity in feed.entity %}
-            {% if entity.vehicle %}
-                {% set v = entity.vehicle %}
-                <tr>
-                    <td>{{ v.vehicle.id }}</td>
-                    <td>{{ v.trip.tripId }}</td>
-                    <td>{{ v.trip.routeId }}</td>
-                    <td>{{ v.currentStopSequence }}</td>
-                </tr>
-            {% endif %}
+        {% for v in vehicles %}
+        <tr>
+            <td>{{ v.id }}</td>
+            <td>{{ v.trip_id }}</td>
+            <td>{{ v.route_id }}</td>
+            <td>{{ v.stop_seq }}</td>
+            <td>{{ v.speed }}</td>
+        </tr>
         {% endfor %}
     </tbody>
 </table>
 
 <script src="https://unpkg.com/maplibre-gl@2.4.0/dist/maplibre-gl.js"></script>
-<script>
-    const map = new maplibregl.Map({
-        container: "map",
-        style: "https://basemaps.cartocdn.com/gl/positron-gl-style/style.json",
-        center: [-118.25, 34.05],
-        zoom: 9,
-    });
-
-    map.on('load', () => {
-        const geojson = {{ geojson | tojson }};
-        map.addSource('vehicles', { type: 'geojson', data: geojson });
-
-        map.addLayer({
-            id: 'vehicles',
-            type: 'circle',
-            source: 'vehicles',
-            paint: {
-                'circle-radius': 6,
-                'circle-color': '#FF0000'
-            }
-        });
-    });
+<script src="/static/scripts/map.js">
 </script>
-
 </body>
 </html>
